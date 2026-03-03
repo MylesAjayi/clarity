@@ -497,8 +497,8 @@ Escalation happens by tagging a senior agent in Slack. There's no formal escalat
 // --- Boot ---
 document.addEventListener('DOMContentLoaded', () => {
   // MVP: Direct OpenRouter key (move to server-side worker before scaling)
-  // API key is loaded server-side via Cloudflare Worker — never in client code
-  // window.CLARITY_OR_KEY is not used in production
+  // API calls go through secure server-side proxy — no keys in client code
+  window.CLARITY_API_URL = 'https://clarity-api-kb8a.onrender.com/generate';
 
   ClarityApp.init();
 
