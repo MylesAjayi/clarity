@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clarity by Nova — AI Process Documentation Tool</title>
+  <meta name="description" content="Describe your messy process, get a professional process map, SOP, and improvement plan in seconds. Free to try. Powered by Nova Insights & Solutions.">
+
+  <meta property="og:title" content="Clarity by Nova — Turn Process Chaos into Documentation">
+  <meta property="og:description" content="AI-powered process mapping and documentation. Describe your process, get professional outputs in seconds.">
+  <meta property="og:type" content="website">
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◆</text></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+  <!-- ==================== HEADER ==================== -->
+  <header class="app-header">
+    <a href="index.html" class="app-logo">
+      <div class="logo-mark">N</div>
+      <span>Clarity</span>
+      <span class="badge">by Nova</span>
+    </a>
+    <div class="header-right">
+      <div class="usage-badge" id="usage-count"></div>
+      <a href="https://mylesajayi.github.io/nova-website/" class="btn-header">Need Expert Help? →</a>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN APP ==================== -->
+  <div class="app-container">
+
+    <!-- --- Input Section --- -->
+    <section class="input-section">
+      <h2>Describe your process</h2>
+      <p class="subtitle">Paste your notes, describe the workflow, or answer guided questions — we'll turn it into professional documentation.</p>
+
+      <!-- Method Tabs -->
+      <div class="method-tabs">
+        <button class="method-tab active" data-method="freeform">✏️ Free-form</button>
+        <button class="method-tab" data-method="guided">📋 Guided Questions</button>
+      </div>
+
+      <!-- Free-form Input -->
+      <div id="method-freeform" class="method-panel active">
+        <textarea
+          id="freeform-input"
+          class="text-input-area"
+          placeholder="Describe your process here. Be as detailed as you can — include the steps, who's involved, what systems are used, what goes wrong, and where things slow down.
+
+Example: 'When a customer places an order on our website, the order goes to our warehouse team via email. They manually check stock levels in a spreadsheet, then...'"
+        ></textarea>
+
+        <div class="examples-bar">
+          <span style="font-size:0.82rem;color:var(--grey-500);margin-right:0.3rem;">Try an example:</span>
+          <button class="example-chip" data-example="onboarding">🧑‍💼 Employee Onboarding</button>
+          <button class="example-chip" data-example="invoice">💰 Invoice Approval</button>
+          <button class="example-chip" data-example="support">🎧 Support Tickets</button>
+        </div>
+      </div>
+
+      <!-- Guided Input -->
+      <div id="method-guided" class="method-panel">
+        <div class="guided-form">
+          <div class="form-group">
+            <label>Process Name <span class="hint">*</span></label>
+            <input type="text" id="g-name" class="form-input" placeholder="e.g. New Employee Onboarding">
+          </div>
+          <div class="form-group">
+            <label>Department / Team</label>
+            <input type="text" id="g-department" class="form-input" placeholder="e.g. Human Resources">
+          </div>
+          <div class="form-group">
+            <label>Process Owner <span class="hint">(who's responsible?)</span></label>
+            <input type="text" id="g-owner" class="form-input" placeholder="e.g. HR Manager">
+          </div>
+          <div class="form-group">
+            <label>What triggers this process?</label>
+            <input type="text" id="g-trigger" class="form-input" placeholder="e.g. New hire contract is signed">
+          </div>
+          <div class="form-group">
+            <label>Steps <span class="hint">* List the steps in order. Be as detailed as possible.</span></label>
+            <textarea id="g-steps" class="form-input" rows="6" placeholder="1. HR sends welcome email with start date&#10;2. IT is notified to prepare equipment&#10;3. On day 1, new hire arrives at reception&#10;4. ..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>What does completion look like?</label>
+            <input type="text" id="g-end" class="form-input" placeholder="e.g. Employee is fully set up, trained, and productive">
+          </div>
+          <div class="form-group">
+            <label>Known problems / pain points</label>
+            <textarea id="g-pain" class="form-input" rows="3" placeholder="e.g. IT often isn't notified in time, laptops aren't ready on day 1, managers cancel intro meetings..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Systems / Tools used</label>
+            <input type="text" id="g-systems" class="form-input" placeholder="e.g. BambooHR, Outlook, Jira, Spreadsheets">
+          </div>
+        </div>
+      </div>
+
+      <!-- Options -->
+      <div class="options-row">
+        <label class="output-option">
+          <input type="checkbox" checked disabled> Process Map
+        </label>
+        <label class="output-option">
+          <input type="checkbox" checked disabled> SOP Document
+        </label>
+        <label class="output-option">
+          <input type="checkbox" checked disabled> Improvements
+        </label>
+      </div>
+
+      <!-- Generate -->
+      <div class="generate-row">
+        <span class="cost-estimate">⚡ AI-powered analysis — typically takes 10-20 seconds</span>
+        <button id="btn-generate" class="btn-generate">
+          <span class="btn-text">✨ Generate Documentation</span>
+          <span class="spinner"></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- --- Output Section --- -->
+    <section id="output-section" class="output-section">
+
+      <!-- Output Tabs -->
+      <div class="output-tabs">
+        <button class="output-tab active" data-output="flowchart">🗺️ Process Map</button>
+        <button class="output-tab" data-output="sop">📄 SOP Document</button>
+        <button class="output-tab" data-output="improvements">⚡ Improvements</button>
+      </div>
+
+      <div class="output-content">
+        <!-- Flowchart -->
+        <div id="panel-flowchart" class="output-panel active">
+          <div class="flowchart-container" id="flowchart-content">
+            <div class="empty-state">
+              <div class="icon">🗺️</div>
+              <h3>Your process map will appear here</h3>
+              <p>Describe your process above and click Generate</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- SOP -->
+        <div id="panel-sop" class="output-panel">
+          <div class="sop-content" id="sop-content">
+            <div class="empty-state">
+              <div class="icon">📄</div>
+              <h3>Your SOP will appear here</h3>
+              <p>A complete Standard Operating Procedure, ready to use</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Improvements -->
+        <div id="panel-improvements" class="output-panel">
+          <div id="improvements-content">
+            <div class="empty-state">
+              <div class="icon">⚡</div>
+              <h3>Improvement recommendations will appear here</h3>
+              <p>Quick wins and strategic improvements, prioritised by impact</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export Bar -->
+      <div class="export-bar">
+        <button id="export-md" class="btn-export">📝 Export Markdown</button>
+        <button id="export-json" class="btn-export">🔧 Export JSON</button>
+        <button id="export-pdf" class="btn-export">📄 Export PDF</button>
+        <div style="flex:1;"></div>
+        <a href="https://mylesajayi.github.io/nova-website/#pricing" class="btn-export" style="border-color:var(--accent);color:var(--accent);font-weight:700;">
+          🚀 Need deeper analysis? Book a Sprint →
+        </a>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="app-footer">
+    <p>Clarity by <a href="https://mylesajayi.github.io/nova-website/">Nova Insights & Solutions</a> · AI-powered process documentation · <a href="https://mylesajayi.github.io/nova-website/#pricing">Need expert help?</a></p>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
