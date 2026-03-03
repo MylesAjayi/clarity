@@ -3,7 +3,8 @@
 // Proxies AI requests to OpenRouter, keeps API key server-side
 // ============================================
 
-const OPENROUTER_API_KEY = 'REDACTED_KEY';
+// API key is set via `wrangler secret put OPENROUTER_API_KEY` — never hardcoded
+const OPENROUTER_API_KEY = null; // Loaded from env.OPENROUTER_API_KEY at runtime
 const MODEL = 'google/gemini-3.1-flash-lite-preview'; // Cheapest quality model — ~£0.001 per generation
 
 const CORS_HEADERS = {
@@ -43,7 +44,7 @@ export default {
       const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${env?.OPENROUTER_API_KEY || OPENROUTER_API_KEY}`,
+          'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': 'https://novainsights.co.uk',
           'X-Title': 'Clarity by Nova',
