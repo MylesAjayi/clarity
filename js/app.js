@@ -168,33 +168,70 @@ Systems/Tools Used: ${data.systems}
 
   // --- AI Call ---
   async callAI(userMessage) {
-    // For MVP: calls a serverless function (Cloudflare Worker / Vercel Edge)
-    // The API key lives server-side, never in the browser
-    const endpoint = window.CLARITY_API_URL || '/api/generate';
+    // Check for API backend or direct mode
+    const backendUrl = window.CLARITY_API_URL;
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: this.prompts.system },
-          { role: 'user', content: userMessage }
-        ]
-      })
-    });
+    if (backendUrl) {
+      // Production: call our serverless backend (Cloudflare Worker / Vercel Edge)
+      const response = await fetch(backendUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: this.prompts.system },
+            { role: 'user', content: userMessage }
+          ]
+        })
+      });
 
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || `API error (${response.status})`);
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `API error (${response.status})`);
+      }
+
+      const data = await response.json();
+      return this.parseAIResponse(data.content);
+
+    } else if (window.CLARITY_OR_KEY) {
+      // MVP direct mode: call OpenRouter directly (for testing/early launch)
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${window.CLARITY_OR_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': window.location.origin,
+          'X-Title': 'Clarity by Nova',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-3.1-flash-lite-preview',
+          messages: [
+            { role: 'system', content: this.prompts.system },
+            { role: 'user', content: userMessage }
+          ],
+          max_tokens: 4000,
+          temperature: 0.3,
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error?.message || `AI service error (${response.status})`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) throw new Error('Empty response from AI. Please try again.');
+      return this.parseAIResponse(content);
+
+    } else {
+      throw new Error('No API configured. Running in demo mode.');
     }
+  },
 
-    const data = await response.json();
-
-    // Parse the AI response
+  parseAIResponse(raw) {
     let parsed;
     try {
-      // Handle both direct JSON and string-wrapped JSON
-      const content = typeof data.content === 'string' ? data.content : JSON.stringify(data.content);
+      const content = typeof raw === 'string' ? raw : JSON.stringify(raw);
       // Strip any markdown code fences if present
       const clean = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       parsed = JSON.parse(clean);
@@ -459,11 +496,16 @@ Escalation happens by tagging a senior agent in Slack. There's no formal escalat
 
 // --- Boot ---
 document.addEventListener('DOMContentLoaded', () => {
+  // MVP: Direct OpenRouter key (move to server-side worker before scaling)
+  window.CLARITY_OR_KEY = 'REDACTED_KEY';
+
   ClarityApp.init();
 
-  // Enable demo mode if no API URL is configured
-  if (!window.CLARITY_API_URL) {
+  // If no API URL and no OR key, fall back to demo mode
+  if (!window.CLARITY_API_URL && !window.CLARITY_OR_KEY) {
     ClarityApp.enableDemoMode();
-    console.log('🔧 Clarity running in demo mode. Set window.CLARITY_API_URL to connect to the AI backend.');
+    console.log('🔧 Clarity running in demo mode. Set window.CLARITY_API_URL or window.CLARITY_OR_KEY to connect to AI.');
+  } else {
+    console.log('✨ Clarity connected to AI backend.');
   }
 });
