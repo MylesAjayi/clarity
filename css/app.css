@@ -242,9 +242,9 @@ textarea.form-input { min-height: 80px; resize: vertical; line-height: 1.6; }
 /* --- Flowchart Panel --- */
 .flowchart-container {
   background: var(--grey-50); border: 1px solid var(--grey-100);
-  border-radius: var(--radius); padding: 2rem;
+  border-radius: var(--radius); padding: 1.5rem;
   min-height: 350px; overflow: auto;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: flex-start; justify-content: center;
 }
 .flowchart-svg { max-width: 100%; }
 

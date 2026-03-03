@@ -20,9 +20,14 @@ const ClarityApp = {
 
 Your task is to take a description of a business process and produce THREE outputs in a single JSON response:
 
-1. "flowchart" — An array of steps for a process flowchart. Each step is an object:
-   { "type": "start"|"process"|"decision"|"end", "label": "Step description", "yes_label": "optional", "no_label": "optional" }
-   Decisions should have yes_label and no_label for the two paths.
+1. "flowchart" — A swimlane process map. Return an object with:
+   - "lanes": array of lane names (roles/departments involved), e.g. ["Customer", "Support Agent", "Manager"]
+   - "nodes": array of node objects, each with:
+     { "id": "n1", "type": "start"|"process"|"decision"|"end", "label": "Step description", "lane": "lane name from lanes array" }
+   - "edges": array of connection objects:
+     { "from": "n1", "to": "n2", "label": "optional label e.g. Yes/No/Approved/Rejected" }
+   Decisions MUST have two outgoing edges (typically Yes/No paths).
+   Use 8-20 nodes for a good level of detail. Every node must belong to a lane.
 
 2. "sop" — A detailed Standard Operating Procedure in HTML format. Include:
    - Process title and purpose
@@ -267,23 +272,239 @@ Systems/Tools Used: ${data.systems}
     this.showOutput('flowchart');
   },
 
-  renderFlowchart(steps) {
+  renderFlowchart(data) {
     const container = document.getElementById('flowchart-content');
-    let html = '<div style="display:flex;flex-direction:column;align-items:center;gap:0;">';
 
-    steps.forEach((step, i) => {
-      const typeClass = step.type || 'process';
-      html += `
-        <div class="flow-node">
-          <div class="flow-box ${typeClass}">${step.label}</div>
-          ${step.type === 'decision' ? `<div style="display:flex;gap:2rem;font-size:0.75rem;color:var(--grey-500);margin-top:0.3rem;"><span>✓ ${step.yes_label || 'Yes'}</span><span>✗ ${step.no_label || 'No'}</span></div>` : ''}
-        </div>
-      `;
-      if (i < steps.length - 1) {
-        html += '<div class="flow-arrow"></div>';
+    // Support both old format (array) and new swimlane format (object with lanes/nodes/edges)
+    if (Array.isArray(data)) {
+      // Legacy format fallback
+      this.renderSimpleFlowchart(data, container);
+      return;
+    }
+
+    const { lanes = [], nodes = [], edges = [] } = data;
+    if (!lanes.length || !nodes.length) {
+      this.renderSimpleFlowchart(nodes, container);
+      return;
+    }
+
+    // --- Layout constants ---
+    const LANE_WIDTH = 220;
+    const NODE_H = 44;
+    const NODE_W = 180;
+    const ROW_GAP = 80;
+    const HEADER_H = 44;
+    const PAD_TOP = 20;
+    const PAD_BOTTOM = 30;
+    const PAD_LEFT = 10;
+    const DECISION_SIZE = 56;
+
+    // Build node lookup
+    const nodeMap = {};
+    nodes.forEach(n => { nodeMap[n.id] = n; });
+
+    // Assign columns (lane index)
+    const laneIndex = {};
+    lanes.forEach((l, i) => { laneIndex[l] = i; });
+
+    // Topological sort for row assignment
+    const inDegree = {};
+    const adj = {};
+    nodes.forEach(n => { inDegree[n.id] = 0; adj[n.id] = []; });
+    edges.forEach(e => {
+      if (adj[e.from]) adj[e.from].push(e.to);
+      if (inDegree[e.to] !== undefined) inDegree[e.to]++;
+    });
+
+    const queue = nodes.filter(n => inDegree[n.id] === 0).map(n => n.id);
+    const rowAssign = {};
+    let maxRow = 0;
+
+    // BFS to assign rows
+    const visited = new Set();
+    let bfsQueue = [...queue];
+    bfsQueue.forEach(id => { rowAssign[id] = 0; });
+
+    while (bfsQueue.length > 0) {
+      const current = bfsQueue.shift();
+      if (visited.has(current)) continue;
+      visited.add(current);
+      const currentRow = rowAssign[current] || 0;
+
+      (adj[current] || []).forEach(next => {
+        const nextRow = currentRow + 1;
+        rowAssign[next] = Math.max(rowAssign[next] || 0, nextRow);
+        maxRow = Math.max(maxRow, nextRow);
+        inDegree[next]--;
+        if (inDegree[next] <= 0) bfsQueue.push(next);
+      });
+    }
+
+    // Handle unvisited nodes
+    nodes.forEach(n => {
+      if (rowAssign[n.id] === undefined) {
+        maxRow++;
+        rowAssign[n.id] = maxRow;
       }
     });
 
+    // Calculate positions
+    const totalW = PAD_LEFT + lanes.length * LANE_WIDTH + PAD_LEFT;
+    const totalH = HEADER_H + PAD_TOP + (maxRow + 1) * ROW_GAP + PAD_BOTTOM;
+
+    const getX = (node) => PAD_LEFT + (laneIndex[node.lane] || 0) * LANE_WIDTH + LANE_WIDTH / 2;
+    const getY = (node) => HEADER_H + PAD_TOP + (rowAssign[node.id] || 0) * ROW_GAP + NODE_H / 2;
+
+    // --- Build SVG ---
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalW} ${totalH}" class="flowchart-svg" style="width:100%;max-width:${totalW}px;height:auto;font-family:Inter,sans-serif;">`;
+
+    // Background
+    svg += `<rect width="${totalW}" height="${totalH}" fill="#F8FAFB" rx="8"/>`;
+
+    // Lane headers and columns
+    lanes.forEach((lane, i) => {
+      const x = PAD_LEFT + i * LANE_WIDTH;
+      // Lane background (alternating)
+      if (i % 2 === 1) {
+        svg += `<rect x="${x}" y="${HEADER_H}" width="${LANE_WIDTH}" height="${totalH - HEADER_H}" fill="rgba(0,180,216,0.03)"/>`;
+      }
+      // Lane divider
+      if (i > 0) {
+        svg += `<line x1="${x}" y1="${HEADER_H}" x2="${x}" y2="${totalH}" stroke="#E8ECF0" stroke-width="1" stroke-dasharray="4,4"/>`;
+      }
+      // Lane header
+      svg += `<rect x="${x}" y="0" width="${LANE_WIDTH}" height="${HEADER_H}" fill="#0B1D3A" ${i === 0 ? 'rx="8" ry="8"' : ''} ${i === lanes.length - 1 ? 'rx="8" ry="8"' : ''}/>`;
+      // Fix corners for middle lanes
+      if (i > 0 && i < lanes.length - 1) {
+        svg += `<rect x="${x}" y="0" width="${LANE_WIDTH}" height="${HEADER_H}" fill="#0B1D3A"/>`;
+      }
+      // First lane - round top-left
+      if (i === 0) {
+        svg += `<rect x="${x}" y="0" width="${LANE_WIDTH}" height="${HEADER_H}" fill="#0B1D3A" rx="8"/>`;
+        svg += `<rect x="${x}" y="8" width="${LANE_WIDTH}" height="${HEADER_H - 8}" fill="#0B1D3A"/>`;
+      }
+      // Last lane - round top-right
+      if (i === lanes.length - 1) {
+        svg += `<rect x="${x}" y="0" width="${LANE_WIDTH}" height="${HEADER_H}" fill="#0B1D3A" rx="8"/>`;
+        svg += `<rect x="${x}" y="8" width="${LANE_WIDTH}" height="${HEADER_H - 8}" fill="#0B1D3A"/>`;
+      }
+      // Middle lanes - no rounding
+      if (i > 0 && i < lanes.length - 1) {
+        svg += `<rect x="${x}" y="0" width="${LANE_WIDTH}" height="${HEADER_H}" fill="#0B1D3A"/>`;
+      }
+      // Lane label
+      svg += `<text x="${x + LANE_WIDTH / 2}" y="${HEADER_H / 2 + 1}" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">${this.escSvg(lane)}</text>`;
+    });
+
+    // Edges (draw before nodes so they appear behind)
+    const drawnEdges = [];
+    edges.forEach(e => {
+      const fromNode = nodeMap[e.from];
+      const toNode = nodeMap[e.to];
+      if (!fromNode || !toNode) return;
+
+      const x1 = getX(fromNode);
+      const y1 = getY(fromNode) + (fromNode.type === 'decision' ? DECISION_SIZE / 2 : NODE_H / 2);
+      const x2 = getX(toNode);
+      const y2 = getY(toNode) - (toNode.type === 'decision' ? DECISION_SIZE / 2 : NODE_H / 2);
+
+      // Determine path
+      let path;
+      if (Math.abs(x1 - x2) < 5) {
+        // Straight vertical
+        path = `M${x1},${y1} L${x2},${y2}`;
+      } else {
+        // L-shaped or curved path across lanes
+        const midY = y1 + (y2 - y1) / 2;
+        path = `M${x1},${y1} L${x1},${midY} L${x2},${midY} L${x2},${y2}`;
+      }
+
+      svg += `<path d="${path}" fill="none" stroke="#B0BAC4" stroke-width="1.5" marker-end="url(#arrowhead)"/>`;
+
+      // Edge label
+      if (e.label) {
+        const lx = Math.abs(x1 - x2) < 5 ? x1 + 8 : (x1 + x2) / 2;
+        const ly = (y1 + y2) / 2 - 4;
+        svg += `<rect x="${lx - 18}" y="${ly - 9}" width="${Math.max(36, e.label.length * 6 + 12)}" height="18" rx="9" fill="#F0A500" opacity="0.9"/>`;
+        svg += `<text x="${lx - 18 + Math.max(36, e.label.length * 6 + 12) / 2}" y="${ly + 2}" text-anchor="middle" dominant-baseline="middle" fill="#0B1D3A" font-size="9" font-weight="700">${this.escSvg(e.label)}</text>`;
+      }
+    });
+
+    // Arrow marker definition
+    svg += `<defs><marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#B0BAC4"/></marker></defs>`;
+
+    // Nodes
+    nodes.forEach(n => {
+      const cx = getX(n);
+      const cy = getY(n);
+      const label = this.wrapSvgText(n.label, 24);
+
+      if (n.type === 'start' || n.type === 'end') {
+        // Rounded pill
+        const color = n.type === 'start' ? '#00B4D8' : '#0B1D3A';
+        svg += `<rect x="${cx - NODE_W / 2}" y="${cy - NODE_H / 2}" width="${NODE_W}" height="${NODE_H}" rx="22" fill="${color}" filter="url(#shadow)"/>`;
+        svg += `<text x="${cx}" y="${cy + 1}" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="600">${this.escSvg(n.label)}</text>`;
+      } else if (n.type === 'decision') {
+        // Diamond
+        const s = DECISION_SIZE / 2;
+        svg += `<polygon points="${cx},${cy - s} ${cx + s + 10},${cy} ${cx},${cy + s} ${cx - s - 10},${cy}" fill="#FEF3C7" stroke="#F0A500" stroke-width="2" filter="url(#shadow)"/>`;
+        // Wrap text for diamond
+        const lines = this.wrapSvgText(n.label, 18);
+        const lineH = 11;
+        const startY = cy - (lines.length - 1) * lineH / 2;
+        lines.forEach((line, i) => {
+          svg += `<text x="${cx}" y="${startY + i * lineH}" text-anchor="middle" dominant-baseline="middle" fill="#92400E" font-size="9.5" font-weight="600">${this.escSvg(line)}</text>`;
+        });
+      } else {
+        // Process rectangle
+        svg += `<rect x="${cx - NODE_W / 2}" y="${cy - NODE_H / 2}" width="${NODE_W}" height="${NODE_H}" rx="8" fill="white" stroke="#00B4D8" stroke-width="1.5" filter="url(#shadow)"/>`;
+        // Wrap text
+        const lines = this.wrapSvgText(n.label, 26);
+        const lineH = 12;
+        const startY = cy - (lines.length - 1) * lineH / 2;
+        lines.forEach((line, i) => {
+          svg += `<text x="${cx}" y="${startY + i * lineH + 1}" text-anchor="middle" dominant-baseline="middle" fill="#1A2332" font-size="10.5" font-weight="500">${this.escSvg(line)}</text>`;
+        });
+      }
+    });
+
+    // Drop shadow filter
+    svg += `<defs><filter id="shadow" x="-4%" y="-4%" width="108%" height="112%"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#0B1D3A" flood-opacity="0.08"/></filter></defs>`;
+
+    svg += '</svg>';
+    container.innerHTML = svg;
+  },
+
+  // SVG text helpers
+  escSvg(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  },
+
+  wrapSvgText(text, maxChars) {
+    const words = text.split(' ');
+    const lines = [];
+    let current = '';
+    words.forEach(word => {
+      if ((current + ' ' + word).trim().length > maxChars && current) {
+        lines.push(current.trim());
+        current = word;
+      } else {
+        current = (current + ' ' + word).trim();
+      }
+    });
+    if (current) lines.push(current.trim());
+    return lines.length > 3 ? [...lines.slice(0, 2), lines.slice(2).join(' ').substring(0, maxChars) + '…'] : lines;
+  },
+
+  // Legacy simple flowchart (fallback for old format)
+  renderSimpleFlowchart(steps, container) {
+    if (!Array.isArray(steps)) { container.innerHTML = '<p style="color:var(--grey-500);text-align:center;">Unable to render flowchart</p>'; return; }
+    let html = '<div style="display:flex;flex-direction:column;align-items:center;gap:0;">';
+    steps.forEach((step, i) => {
+      const typeClass = step.type || 'process';
+      html += `<div class="flow-node"><div class="flow-box ${typeClass}">${step.label || step}</div></div>`;
+      if (i < steps.length - 1) html += '<div class="flow-arrow"></div>';
+    });
     html += '</div>';
     container.innerHTML = html;
   },
@@ -424,17 +645,33 @@ Escalation happens by tagging a senior agent in Slack. There's no formal escalat
 
   getDemoResponse() {
     return {
-      flowchart: [
-        { type: 'start', label: 'Process Triggered' },
-        { type: 'process', label: 'Step 1: Initial request received and logged' },
-        { type: 'process', label: 'Step 2: Request details verified and validated' },
-        { type: 'decision', label: 'Is all required information provided?', yes_label: 'Complete', no_label: 'Incomplete' },
-        { type: 'process', label: 'Step 3: Request sent to appropriate team for review' },
-        { type: 'decision', label: 'Request approved?', yes_label: 'Approved', no_label: 'Rejected' },
-        { type: 'process', label: 'Step 4: Action completed and stakeholders notified' },
-        { type: 'process', label: 'Step 5: Documentation updated and filed' },
-        { type: 'end', label: 'Process Complete' }
-      ],
+      flowchart: {
+        lanes: ["Requestor", "Coordinator", "Reviewer", "Executor"],
+        nodes: [
+          { id: "n1", type: "start", label: "Request Submitted", lane: "Requestor" },
+          { id: "n2", type: "process", label: "Log request in tracking system", lane: "Coordinator" },
+          { id: "n3", type: "decision", label: "All info provided?", lane: "Coordinator" },
+          { id: "n4", type: "process", label: "Return to requestor for details", lane: "Coordinator" },
+          { id: "n5", type: "process", label: "Route to appropriate reviewer", lane: "Coordinator" },
+          { id: "n6", type: "decision", label: "Request approved?", lane: "Reviewer" },
+          { id: "n7", type: "process", label: "Send rejection with reasons", lane: "Reviewer" },
+          { id: "n8", type: "process", label: "Complete approved action", lane: "Executor" },
+          { id: "n9", type: "process", label: "Notify all stakeholders", lane: "Executor" },
+          { id: "n10", type: "end", label: "Process Complete", lane: "Executor" }
+        ],
+        edges: [
+          { from: "n1", to: "n2" },
+          { from: "n2", to: "n3" },
+          { from: "n3", to: "n4", label: "No" },
+          { from: "n3", to: "n5", label: "Yes" },
+          { from: "n4", to: "n1", label: "Resubmit" },
+          { from: "n5", to: "n6" },
+          { from: "n6", to: "n7", label: "Rejected" },
+          { from: "n6", to: "n8", label: "Approved" },
+          { from: "n8", to: "n9" },
+          { from: "n9", to: "n10" }
+        ]
+      },
       sop: `<h3>Standard Operating Procedure</h3>
 <p><strong>Purpose:</strong> This SOP defines the standard process for handling and completing the described workflow, ensuring consistency, quality, and accountability at every stage.</p>
 
