@@ -16,9 +16,11 @@ const ClarityApp = {
 
   // --- Prompt Templates ---
   prompts: {
-    system: `You are an expert Business Analyst with 15+ years of experience in process mapping, documentation, and improvement. You work at Nova Insights & Solutions.
+    system: `You are a Lead Business Analyst with 15+ years of experience in process mapping, documentation, and improvement. You work at Nova Insights & Solutions.
 
-Your task is to take a description of a business process and produce THREE outputs in a single JSON response:
+You are reviewing a process description as if a junior analyst brought it to you. Your job is not just to document what they said — it's to CHALLENGE it. Find the gaps, the dead-ends, the missing handoffs, the things they haven't thought about.
+
+Your task is to take a description of a business process and produce FOUR outputs in a single JSON response:
 
 1. "flowchart" — A swimlane process map. Return an object with:
    - "lanes": array of lane names (roles/departments involved), e.g. ["Customer", "Support Agent", "Manager"]
@@ -38,10 +40,23 @@ Your task is to take a description of a business process and produce THREE outpu
    - Exceptions and edge cases
    Use proper HTML tags: <h3>, <p>, <ol>, <li>, <table>, <tr>, <th>, <td>
 
-3. "improvements" — An array of improvement recommendations. Each:
+3. "gapAnalysis" — A structured gap analysis. This is the MOST IMPORTANT output. Think like a Lead BA reviewing a junior's work. Ask the hard questions. Return an object with:
+   - "critical": array of objects — things that are genuinely missing or broken in the process. Each:
+     { "question": "The direct question to ask", "context": "Why this matters and what could go wrong if not addressed" }
+     Examples: "What happens if the customer never responds?", "Who owns this step when the manager is on leave?", "Does the process end here, or is there a downstream handoff?"
+   - "unclear": array of objects — things that are ambiguous or need clarification. Each:
+     { "question": "The direct question to ask", "context": "Why this needs clarifying" }
+     Examples: "Is there a time limit on approval?", "What criteria determines whether this is high or low priority?", "Who has the authority to make exceptions?"
+   - "optimisation": array of objects — opportunities to improve, automate, or streamline. Each:
+     { "question": "The direct question to ask", "context": "What the opportunity is and the potential impact" }
+     Examples: "Could this manual check be automated?", "Is this approval step adding value or just adding delay?", "Could these two handoffs be consolidated into one?"
+
+   Aim for 3-6 items per category. Be SPECIFIC to the process described — no generic advice. Every question should make the reader think "oh, I hadn't considered that."
+
+4. "improvements" — An array of improvement recommendations. Each:
    { "title": "Short title", "description": "Detailed explanation", "impact": "high"|"medium"|"low", "effort": "quick"|"medium"|"strategic", "category": "automation"|"elimination"|"simplification"|"standardisation"|"risk" }
 
-Respond ONLY with valid JSON. No markdown, no code fences, just the JSON object with keys: flowchart, sop, improvements.`,
+Respond ONLY with valid JSON. No markdown, no code fences, just the JSON object with keys: flowchart, sop, gapAnalysis, improvements.`,
 
     userFreeform: (text) => `Here is a description of a business process. Please analyse it and produce the flowchart, SOP, and improvements.\n\n---\n${text}\n---`,
 
@@ -213,7 +228,7 @@ Systems/Tools Used: ${data.systems}
             { role: 'system', content: this.prompts.system },
             { role: 'user', content: userMessage }
           ],
-          max_tokens: 4000,
+          max_tokens: 8000,
           temperature: 0.3,
         })
       });
@@ -244,7 +259,7 @@ Systems/Tools Used: ${data.systems}
       throw new Error('Failed to parse AI response. Please try again.');
     }
 
-    if (!parsed.flowchart || !parsed.sop || !parsed.improvements) {
+    if (!parsed.flowchart || !parsed.sop || !parsed.improvements || !parsed.gapAnalysis) {
       throw new Error('Incomplete response from AI. Please try again.');
     }
 
@@ -261,6 +276,9 @@ Systems/Tools Used: ${data.systems}
 
     // Render SOP
     document.getElementById('sop-content').innerHTML = data.sop;
+
+    // Render gap analysis
+    this.renderGapAnalysis(data.gapAnalysis);
 
     // Render improvements
     this.renderImprovements(data.improvements);
@@ -540,6 +558,104 @@ Systems/Tools Used: ${data.systems}
     container.innerHTML = html;
   },
 
+  renderGapAnalysis(gapAnalysis) {
+    const container = document.getElementById('gaps-content');
+
+    const critical = gapAnalysis.critical || [];
+    const unclear = gapAnalysis.unclear || [];
+    const optimisation = gapAnalysis.optimisation || [];
+    const totalGaps = critical.length + unclear.length + optimisation.length;
+
+    let html = '';
+
+    // Summary bar
+    html += `
+      <div class="gap-summary">
+        <div class="gap-summary-stat">
+          <div class="stat-number">${totalGaps}</div>
+          <div class="stat-label">Total Questions</div>
+        </div>
+        <div class="gap-summary-stat">
+          <div class="stat-number" style="color:var(--error);">${critical.length}</div>
+          <div class="stat-label">Critical Gaps</div>
+        </div>
+        <div class="gap-summary-stat">
+          <div class="stat-number" style="color:var(--warning);">${unclear.length}</div>
+          <div class="stat-label">Unclear Areas</div>
+        </div>
+        <div class="gap-summary-stat">
+          <div class="stat-number" style="color:var(--success);">${optimisation.length}</div>
+          <div class="stat-label">Optimisation</div>
+        </div>
+      </div>
+    `;
+
+    // Critical gaps
+    if (critical.length > 0) {
+      html += `
+        <div class="gap-group">
+          <div class="gap-group-header">
+            <span class="gap-icon">🔴</span>
+            <h3>Critical Gaps</h3>
+            <span class="gap-count">${critical.length}</span>
+          </div>
+      `;
+      critical.forEach(gap => {
+        html += `
+          <div class="gap-card critical">
+            <div class="gap-question">${gap.question}</div>
+            <div class="gap-context">${gap.context}</div>
+          </div>
+        `;
+      });
+      html += '</div>';
+    }
+
+    // Unclear areas
+    if (unclear.length > 0) {
+      html += `
+        <div class="gap-group">
+          <div class="gap-group-header">
+            <span class="gap-icon">🟡</span>
+            <h3>Unclear Areas</h3>
+            <span class="gap-count">${unclear.length}</span>
+          </div>
+      `;
+      unclear.forEach(gap => {
+        html += `
+          <div class="gap-card unclear">
+            <div class="gap-question">${gap.question}</div>
+            <div class="gap-context">${gap.context}</div>
+          </div>
+        `;
+      });
+      html += '</div>';
+    }
+
+    // Optimisation opportunities
+    if (optimisation.length > 0) {
+      html += `
+        <div class="gap-group">
+          <div class="gap-group-header">
+            <span class="gap-icon">🟢</span>
+            <h3>Optimisation Opportunities</h3>
+            <span class="gap-count">${optimisation.length}</span>
+          </div>
+      `;
+      optimisation.forEach(gap => {
+        html += `
+          <div class="gap-card optimisation">
+            <div class="gap-question">${gap.question}</div>
+            <div class="gap-context">${gap.context}</div>
+          </div>
+        `;
+      });
+      html += '</div>';
+    }
+
+    container.innerHTML = html;
+  },
+
   // --- Examples ---
   loadExample(key) {
     const examples = {
@@ -594,7 +710,7 @@ Escalation happens by tagging a senior agent in Slack. There's no formal escalat
   // --- Export ---
   exportMarkdown() {
     if (!this.state.outputs) return;
-    const { sop, improvements } = this.state.outputs;
+    const { sop, improvements, gapAnalysis } = this.state.outputs;
 
     // Convert SOP HTML to rough markdown
     let md = '# Process Documentation\n\n';
@@ -603,6 +719,30 @@ Escalation happens by tagging a senior agent in Slack. There's no formal escalat
             .replace(/<p>/g, '\n').replace(/<\/p>/g, '\n')
             .replace(/<li>/g, '- ').replace(/<\/li>/g, '\n')
             .replace(/<[^>]+>/g, '').trim();
+
+    // Gap Analysis
+    if (gapAnalysis) {
+      md += '\n\n## ⚠️ Questions to Consider\n\n';
+      if (gapAnalysis.critical && gapAnalysis.critical.length > 0) {
+        md += '### 🔴 Critical Gaps\n\n';
+        gapAnalysis.critical.forEach((gap, i) => {
+          md += `${i + 1}. **${gap.question}**\n   ${gap.context}\n\n`;
+        });
+      }
+      if (gapAnalysis.unclear && gapAnalysis.unclear.length > 0) {
+        md += '### 🟡 Unclear Areas\n\n';
+        gapAnalysis.unclear.forEach((gap, i) => {
+          md += `${i + 1}. **${gap.question}**\n   ${gap.context}\n\n`;
+        });
+      }
+      if (gapAnalysis.optimisation && gapAnalysis.optimisation.length > 0) {
+        md += '### 🟢 Optimisation Opportunities\n\n';
+        gapAnalysis.optimisation.forEach((gap, i) => {
+          md += `${i + 1}. **${gap.question}**\n   ${gap.context}\n\n`;
+        });
+      }
+    }
+
     md += '\n\n## Improvement Recommendations\n\n';
     improvements.forEach((imp, i) => {
       md += `### ${i + 1}. ${imp.title}\n`;
@@ -726,7 +866,52 @@ Escalation happens by tagging a senior agent in Slack. There's no formal escalat
           description: 'Build a dashboard showing all in-flight requests, their current stage, and SLA status. This provides visibility across the team and enables proactive management of bottlenecks before they cause delays.',
           impact: 'high', effort: 'strategic', category: 'automation'
         }
-      ]
+      ],
+
+      gapAnalysis: {
+        critical: [
+          {
+            question: "What happens if the reviewer is unavailable for an extended period?",
+            context: "There's no escalation path or delegation mechanism if the assigned reviewer is on leave, sick, or overloaded. Requests could stall indefinitely with no visibility."
+          },
+          {
+            question: "Who owns the process end-to-end?",
+            context: "Four roles are involved but there's no single process owner accountable for overall performance, SLA adherence, or continuous improvement. Without ownership, issues get noticed but never fixed."
+          },
+          {
+            question: "What happens after a rejection — does the process end or loop back?",
+            context: "The rejection path sends reasons to the requestor, but it's unclear whether they can resubmit, appeal, or if it's a dead-end. This ambiguity could frustrate requestors and create rework."
+          }
+        ],
+        unclear: [
+          {
+            question: "What are the SLA targets for each stage?",
+            context: "The process mentions routing and review steps but doesn't define how long each should take. Without SLAs, there's no way to measure or manage performance."
+          },
+          {
+            question: "How is the 'appropriate reviewer' determined?",
+            context: "The coordinator routes to a reviewer, but the criteria for selection aren't defined. Is it based on request type, value, department, or availability? This could lead to inconsistent routing."
+          },
+          {
+            question: "What constitutes 'all info provided'?",
+            context: "The validation check is subjective. Different coordinators may have different standards for what's complete, leading to inconsistent outcomes and requestor frustration."
+          }
+        ],
+        optimisation: [
+          {
+            question: "Could the coordinator role be eliminated with smart form design?",
+            context: "If the submission form enforces mandatory fields and auto-routes based on request type, the manual logging and validation step becomes unnecessary — removing an entire role from the process."
+          },
+          {
+            question: "Is the separate notification step needed, or could it be automated?",
+            context: "Stakeholder notification after execution could be triggered automatically by the system when status changes, rather than requiring manual action by the executor."
+          },
+          {
+            question: "Could low-risk requests skip the review step entirely?",
+            context: "If clear criteria exist, some request types (e.g., standard, low-value, pre-approved categories) could be auto-approved, reducing bottlenecks and freeing reviewer capacity for complex cases."
+          }
+        ]
+      }
     };
   }
 };

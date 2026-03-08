@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Clarity by Nova — AI Process Documentation Tool</title>
-  <meta name="description" content="Describe your messy process, get a professional process map, SOP, and improvement plan in seconds. Free to try. Powered by Nova Insights & Solutions.">
+  <title>Clarity by Nova — Scribble Your Process. We'll Show You What's Missing.</title>
+  <meta name="description" content="Turn messy process descriptions into clear flowcharts, SOPs, and gap analysis. Highlight dead-ends, missing handoffs, and overlooked steps — instantly. Free to try.">
 
-  <meta property="og:title" content="Clarity by Nova — Turn Process Chaos into Documentation">
-  <meta property="og:description" content="AI-powered process mapping and documentation. Describe your process, get professional outputs in seconds.">
+  <meta property="og:title" content="Clarity by Nova — Scribble Your Process. We'll Show You What's Missing.">
+  <meta property="og:description" content="AI-powered process mapping with Lead BA gap analysis. Spot dead-ends, missing handoffs, and unclear ownership instantly.">
   <meta property="og:type" content="website">
 
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◆</text></svg>">
@@ -33,13 +33,75 @@
     </div>
   </header>
 
+  <!-- ==================== HERO SECTION ==================== -->
+  <section class="hero-section">
+    <div class="hero-content">
+      <h1 class="hero-title">Scribble your process.<br><span class="hero-highlight">We'll show you what's missing.</span></h1>
+      <p class="hero-subtitle">Turn messy ideas into clear flowcharts. Highlight gaps, dead-ends, and overlooked steps — instantly.</p>
+      <a href="#app-section" class="btn-hero">Try it free ↓</a>
+    </div>
+  </section>
+
+  <!-- ==================== HOW IT WORKS ==================== -->
+  <section class="how-it-works-section">
+    <h2 class="section-heading">From brain dump to blueprint in minutes.</h2>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-number">1</div>
+        <h3>Scribble your process</h3>
+        <p>No formal language needed. Just describe what happens, step by step. As messy as you like.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">2</div>
+        <h3>We visualise it</h3>
+        <p>Get a clean swimlane flowchart and structured SOP documentation — instantly.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">3</div>
+        <h3>We highlight what's unclear</h3>
+        <p>Missing handoffs? Dead-ends? Unclear ownership? We flag the questions you haven't asked yet.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">4</div>
+        <h3>You refine it</h3>
+        <p>Decide where to dig deeper, add steps, or close gaps. Your process, made bulletproof.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== TRUST / USE CASES ==================== -->
+  <section class="trust-section">
+    <h2 class="section-heading">You know your process. We'll help you see it clearly.</h2>
+    <p class="section-subtitle">Whether you're documenting for the first time or untangling something that's grown organically — Clarity helps you spot what you're missing.</p>
+    <div class="use-cases-grid">
+      <div class="use-case-card">
+        <div class="use-case-icon">🧑‍💼</div>
+        <h4>Process Owners & Team Leads</h4>
+        <p>"I documented a process but my manager keeps asking questions I can't answer."</p>
+        <span class="use-case-result">→ Clarity flags those gaps <em>before</em> your manager sees it.</span>
+      </div>
+      <div class="use-case-card">
+        <div class="use-case-icon">🏢</div>
+        <h4>Small Business Owners</h4>
+        <p>"I run this process in my head, but I need to hand it off or hire someone."</p>
+        <span class="use-case-result">→ Clarity shows you what you forgot to explain.</span>
+      </div>
+      <div class="use-case-card">
+        <div class="use-case-icon">📋</div>
+        <h4>Consultants & Freelancers</h4>
+        <p>"My client asked me to document their process, but they're vague."</p>
+        <span class="use-case-result">→ Clarity generates the questions to take back to them.</span>
+      </div>
+    </div>
+  </section>
+
   <!-- ==================== MAIN APP ==================== -->
-  <div class="app-container">
+  <div class="app-container" id="app-section">
 
     <!-- --- Input Section --- -->
     <section class="input-section">
       <h2>Describe your process</h2>
-      <p class="subtitle">Paste your notes, describe the workflow, or answer guided questions — we'll turn it into professional documentation.</p>
+      <p class="subtitle">Paste your notes, describe the workflow, or answer guided questions — we'll map it, document it, and show you what's missing.</p>
 
       <!-- Method Tabs -->
       <div class="method-tabs">
@@ -114,6 +176,9 @@ Example: 'When a customer places an order on our website, the order goes to our 
         <label class="output-option">
           <input type="checkbox" checked disabled> Improvements
         </label>
+        <label class="output-option">
+          <input type="checkbox" checked disabled> Gap Analysis
+        </label>
       </div>
 
       <!-- Generate -->
@@ -133,6 +198,7 @@ Example: 'When a customer places an order on our website, the order goes to our 
       <div class="output-tabs">
         <button class="output-tab active" data-output="flowchart">🗺️ Process Map</button>
         <button class="output-tab" data-output="sop">📄 SOP Document</button>
+        <button class="output-tab" data-output="gaps">⚠️ Questions to Consider</button>
         <button class="output-tab" data-output="improvements">⚡ Improvements</button>
       </div>
 
@@ -155,6 +221,17 @@ Example: 'When a customer places an order on our website, the order goes to our 
               <div class="icon">📄</div>
               <h3>Your SOP will appear here</h3>
               <p>A complete Standard Operating Procedure, ready to use</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gap Analysis -->
+        <div id="panel-gaps" class="output-panel">
+          <div id="gaps-content">
+            <div class="empty-state">
+              <div class="icon">⚠️</div>
+              <h3>Gap analysis will appear here</h3>
+              <p>Critical gaps, unclear areas, and optimisation opportunities — the questions you haven't asked yet</p>
             </div>
           </div>
         </div>
@@ -185,9 +262,16 @@ Example: 'When a customer places an order on our website, the order goes to our 
 
   </div>
 
+  <!-- ==================== CTA SECTION ==================== -->
+  <section class="cta-section">
+    <h2>Process still feeling complex?</h2>
+    <p>Some processes need a human touch. Our Process Clarity Sprint gives you a dedicated Business Analyst for hands-on process mapping, gap analysis, and improvement planning.</p>
+    <a href="https://mylesajayi.github.io/nova-website/#pricing" class="btn-cta">Book a Process Clarity Sprint →</a>
+  </section>
+
   <!-- ==================== FOOTER ==================== -->
   <footer class="app-footer">
-    <p>Clarity by <a href="https://mylesajayi.github.io/nova-website/">Nova Insights & Solutions</a> · AI-powered process documentation · <a href="https://mylesajayi.github.io/nova-website/#pricing">Need expert help?</a></p>
+    <p>Clarity by <a href="https://mylesajayi.github.io/nova-website/">Nova Insights & Solutions</a> · AI-powered process documentation & gap analysis · <a href="https://mylesajayi.github.io/nova-website/#pricing">Need expert help?</a></p>
   </footer>
 
   <script src="js/app.js"></script>
