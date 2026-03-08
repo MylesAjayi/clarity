@@ -9,8 +9,9 @@ const ClarityApp = {
     method: 'freeform',
     generating: false,
     outputs: null,
-    usageCount: parseInt(localStorage.getItem('clarity_usage') || '0'),
-    usageLimit: 3,
+    usageCount: 0,
+    usageLimit: Infinity,
+    devMode: true, // Remove usage limits for testing — re-enable before launch
     apiKey: null, // Set via config for production
   },
 
@@ -123,8 +124,7 @@ Systems/Tools Used: ${data.systems}
   updateUsageDisplay() {
     const el = document.getElementById('usage-count');
     if (el) {
-      const remaining = Math.max(0, this.state.usageLimit - this.state.usageCount);
-      el.innerHTML = `<strong>${remaining}</strong>/${this.state.usageLimit} free`;
+      el.innerHTML = '<strong>∞</strong> dev mode';
     }
   },
 
@@ -173,9 +173,6 @@ Systems/Tools Used: ${data.systems}
       const result = await this.callAI(userMessage);
       this.state.outputs = result;
       this.renderOutputs(result);
-      this.state.usageCount++;
-      localStorage.setItem('clarity_usage', this.state.usageCount.toString());
-      this.updateUsageDisplay();
     } catch (err) {
       console.error('Generation failed:', err);
       this.showError(err.message || 'Something went wrong. Please try again.');
